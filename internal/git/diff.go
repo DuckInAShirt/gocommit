@@ -20,9 +20,9 @@ var ExcludePatterns = []string{
 }
 
 func GetStagedDiff() (string, error) {
-	args := []string{"diff", "--cached"}
+	args := []string{"diff", "--cached", "--"}
 	for _, p := range ExcludePatterns {
-		args = append(args, fmt.Sprintf(":%s", p))
+		args = append(args, fmt.Sprintf(":(exclude)%s", p))
 	}
 
 	cmd := exec.Command("git", args...)
