@@ -15,24 +15,33 @@ AI 驱动的中文 Git 提交信息生成工具。
 
 ## 安装
 
+### macOS / Linux（一键安装）
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/DuckInAShert/gocommit/main/install.sh | bash
+```
+
+### Homebrew
+
+```bash
+brew tap DuckInAShert/tap
+brew install gocommit
+```
+
+### Go Install
+
 ```bash
 go install github.com/xinranzhao/gocommit/cmd/gocommit@latest
 ```
 
-## 快速开始
+### 首次配置
 
 ```bash
-# 1. 配置 API Key
-gocommit config api_key=sk-xxx
+# 交互式配置（推荐）
+gocommit setup
 
-# 或使用环境变量
-export OPENAI_API_KEY=sk-xxx
-
-# 2. 暂存你的变更
-git add .
-
-# 3. 生成提交信息
-gocommit
+# 或手动配置
+gocommit config api_key=你的key base_url=https://opencode.ai/zen/go/v1 model=kimi-k2.5
 ```
 
 ## 使用

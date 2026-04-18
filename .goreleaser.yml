@@ -1,0 +1,47 @@
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: gocommit
+    main: ./cmd/gocommit
+    binary: gocommit
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+
+archives:
+  - format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- .Arch }}
+    format_overrides:
+      - goos: windows
+        format: zip
+
+brews:
+  - repository:
+      owner: DuckInAShert
+      name: homebrew-tap
+    directory: Formula
+    homepage: https://github.com/DuckInAShert/gocommit
+    description: "AI-powered Chinese git commit message generator"
+    test:
+      command: gocommit --help
+
+release:
+  github:
+    owner: DuckInAShert
+    name: gocommit

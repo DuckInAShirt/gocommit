@@ -16,6 +16,7 @@ type Options struct {
 	Amend     bool
 	AutoYes   bool
 	DryRun    bool
+	Debug     bool
 }
 
 func Run(opts Options) error {
@@ -49,7 +50,7 @@ func Run(opts Options) error {
 		return fmt.Errorf("API key not set, run `gocommit config` or set OPENAI_API_KEY env")
 	}
 
-	client := ai.NewClient(cfg.APIKey, cfg.BaseURL, cfg.Model)
+	client := ai.NewClient(cfg.APIKey, cfg.BaseURL, cfg.Model, opts.Debug)
 
 	fmt.Print("Generating commit message... ")
 	message, err := client.GenerateCommitMessage(diff)

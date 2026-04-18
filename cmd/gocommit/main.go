@@ -15,6 +15,7 @@ var (
 	amend     bool
 	autoYes   bool
 	dryRun    bool
+	debug     bool
 )
 
 var rootCmd = &cobra.Command{
@@ -27,6 +28,7 @@ var rootCmd = &cobra.Command{
 			Amend:     amend,
 			AutoYes:   autoYes,
 			DryRun:    dryRun,
+			Debug:     debug,
 		})
 	},
 }
@@ -90,6 +92,7 @@ func init() {
 	rootCmd.Flags().BoolVarP(&amend, "amend", "", false, "amend the previous commit")
 	rootCmd.Flags().BoolVarP(&autoYes, "yes", "y", false, "skip confirmation and auto-commit")
 	rootCmd.Flags().BoolVarP(&dryRun, "dry-run", "d", false, "show message without committing")
+	rootCmd.Flags().BoolVarP(&debug, "debug", "", false, "print API request/response for debugging")
 
 	rootCmd.AddCommand(configCmd)
 }

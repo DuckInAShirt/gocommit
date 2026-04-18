@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -25,8 +26,10 @@ type ChatRequest struct {
 type ChatResponse struct {
 	Choices []struct {
 		Message struct {
-			Content string `json:"content"`
+			Content   string `json:"content"`
+			Reasoning string `json:"reasoning"`
 		} `json:"message"`
+		FinishReason string `json:"finish_reason"`
 	} `json:"choices"`
 	Error *struct {
 		Message string `json:"message"`
@@ -38,9 +41,10 @@ type Client struct {
 	baseURL string
 	model   string
 	client  *http.Client
+	debug   bool
 }
 
-func NewClient(apiKey, baseURL, model string) *Client {
+func NewClient(apiKey, baseURL, model string, debug bool) *Client {
 	if baseURL == "" {
 		baseURL = "https://api.openai.com/v1"
 	}
@@ -51,6 +55,7 @@ func NewClient(apiKey, baseURL, model string) *Client {
 		apiKey:  apiKey,
 		baseURL: strings.TrimRight(baseURL, "/"),
 		model:   model,
+		debug:   debug,
 		client: &http.Client{
 			Timeout: 60 * time.Second,
 		},
@@ -67,12 +72,18 @@ func (c *Client) GenerateCommitMessage(diff string) (string, error) {
 			{Role: "user", Content: prompt},
 		},
 		Temperature: 0.3,
-		MaxTokens:   500,
+		MaxTokens:   2000,
 	}
 
 	body, err := json.Marshal(reqBody)
 	if err != nil {
 		return "", fmt.Errorf("marshal request failed: %w", err)
+	}
+
+	if c.debug {
+		fmt.Printf("\n[DEBUG] Request URL: %s/chat/completions\n", c.baseURL)
+		fmt.Printf("[DEBUG] Request Model: %s\n", c.model)
+		fmt.Printf("[DEBUG] Request Body: %s\n\n", string(body))
 	}
 
 	req, err := http.NewRequest("POST", c.baseURL+"/chat/completions", bytes.NewReader(body))
@@ -94,6 +105,11 @@ func (c *Client) GenerateCommitMessage(diff string) (string, error) {
 		return "", fmt.Errorf("read response failed: %w", err)
 	}
 
+	if c.debug {
+		fmt.Printf("[DEBUG] Response Status: %d\n", resp.StatusCode)
+		fmt.Printf("[DEBUG] Response Body: %s\n\n", string(respBody))
+	}
+
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(respBody))
 	}
@@ -111,7 +127,20 @@ func (c *Client) GenerateCommitMessage(diff string) (string, error) {
 		return "", fmt.Errorf("no response from AI")
 	}
 
-	message := strings.TrimSpace(chatResp.Choices[0].Message.Content)
+	choice := chatResp.Choices[0]
+	message := strings.TrimSpace(choice.Message.Content)
+
+	if message == "" && choice.Message.Reasoning != "" {
+		message = extractCommitFromReasoning(choice.Message.Reasoning)
+	}
+
+	if message == "" {
+		if choice.FinishReason == "length" {
+			return "", fmt.Errorf("AI response truncated (hit max_tokens), try increasing max_tokens or using a non-reasoning model")
+		}
+		return "", fmt.Errorf("AI returned empty response")
+	}
+
 	message = cleanMessage(message)
 
 	return message, nil
@@ -160,4 +189,15 @@ func cleanMessage(msg string) string {
 	}
 
 	return strings.TrimSpace(msg)
+}
+
+func extractCommitFromReasoning(reasoning string) string {
+	types := `(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)`
+	re := regexp.MustCompile(types + `(\([^)]+\))?:\s*.+`)
+	matches := re.FindAllString(reasoning, -1)
+	if len(matches) > 0 {
+		last := matches[len(matches)-1]
+		return strings.TrimSpace(last)
+	}
+	return ""
 }
